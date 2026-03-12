@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" stroke="#e94560" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- ears -->
+  <polyline points="14,28 8,10 22,22" />
+  <polyline points="50,28 56,10 42,22" />
+  <!-- head -->
+  <ellipse cx="32" cy="34" rx="20" ry="18" />
+  <!-- eyes -->
+  <circle cx="24" cy="30" r="2.5" fill="#e94560" stroke="none" />
+  <circle cx="40" cy="30" r="2.5" fill="#e94560" stroke="none" />
+  <!-- nose -->
+  <polygon points="32,36 30,38 34,38" fill="#e94560" stroke="none" />
+  <!-- mouth -->
+  <path d="M28,40 Q32,44 36,40" />
+  <!-- whiskers -->
+  <line x1="6" y1="34" x2="20" y2="36" />
+  <line x1="6" y1="40" x2="20" y2="40" />
+  <line x1="44" y1="36" x2="58" y2="34" />
+  <line x1="44" y1="40" x2="58" y2="40" />
+</svg>
