@@ -21,6 +21,24 @@ async def init_db():
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_add_missing_columns)
+
+
+def _add_missing_columns(conn):
+    """ADD COLUMN for any columns that create_all doesn't handle on existing tables."""
+    _additions = [
+        ("conversations", "summary", "TEXT"),
+        ("conversations", "summary_through_msg_id", "TEXT"),
+    ]
+    for table, column, col_type in _additions:
+        try:
+            conn.execute(
+                __import__("sqlalchemy").text(
+                    f"ALTER TABLE {table} ADD COLUMN {column} {col_type}"
+                )
+            )
+        except Exception:
+            pass  # column already exists
 
 
 async def get_db():

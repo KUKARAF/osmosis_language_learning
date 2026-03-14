@@ -7,9 +7,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import User, Cat, Conversation, Message, _uuid, _utcnow
-from app.services import llm_service, cat_service
+from app.services import llm_service, cat_service, summarization_service
 from app.tools.definitions import TOOLS
 from app.tools.executor import ToolExecutor
+from app import plugins
 
 _templates_dir = Path(__file__).resolve().parent.parent / "templates"
 _jinja_env = Environment(loader=FileSystemLoader(str(_templates_dir)))
@@ -83,12 +84,13 @@ async def handle_message(
     db.add(user_msg)
     await db.commit()
 
-    # Build messages array
-    history = await _load_history(db, conversation_id)
+    # Build messages array (with summarization of old turns)
+    history = await summarization_service.build_context_with_summary(db, conv)
     system_prompt = await build_system_prompt(user, cat)
     messages = [{"role": "system", "content": system_prompt}] + history
 
-    executor = ToolExecutor(db)
+    executor = ToolExecutor(db, plugin_handlers=plugins.all_handlers())
+    all_tools = plugins.all_tools(TOOLS)
     assistant_content = ""
     total_tokens = 0
     iteration = 0
@@ -99,7 +101,7 @@ async def handle_message(
         current_content = ""
 
         async for chunk in llm_service.chat_completion_stream(
-            messages, tools=TOOLS
+            messages, tools=all_tools
         ):
             if chunk.get("type") == "done":
                 break

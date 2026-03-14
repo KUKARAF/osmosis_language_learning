@@ -1,7 +1,7 @@
 import { checkAuth, redirectToLogin } from './auth.js';
 import { initNotifications } from './notifications.js';
-import { initChat, teardownChat } from './chat.js';
-import { initReview } from './srs.js';
+import { initChat, teardownChat, setDevMode } from './chat.js';
+import { initReview, setDevMode as setSrsDevMode } from './srs.js';
 import { initGoals } from './goals.js';
 import { initSettings } from './settings.js';
 
@@ -49,6 +49,10 @@ async function boot() {
   if (!user) {
     redirectToLogin();
     return;
+  }
+  if (user.dev_mode) {
+    setDevMode(true);
+    setSrsDevMode(true);
   }
 
   await initNotifications();

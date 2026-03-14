@@ -9,13 +9,12 @@ services:
     env_file:
       - .env
     volumes:
-      - ./backend:/app/backend
-      - ./frontend:/app/frontend
-      - db-data:/app/data
+      - ./backend:/app/backend:z
+      - ./frontend:/app/frontend:z
+      - ./db-data:/app/data:z
+      - ../osmosis-media:/app/osmosis-media:z
     environment:
       DEV_MODE: "true"
-      DATABASE_URL: "sqlite+aiosqlite:///data/osmosis.db"
-    command: ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
-
-volumes:
-  db-data:
+      DATABASE_URL: "sqlite+aiosqlite:////app/data/osmosis.db"
+    command: >
+      sh -c "uv sync && uv pip install --python .venv/bin/python -e /app/osmosis-media && uv run --no-sync uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app"

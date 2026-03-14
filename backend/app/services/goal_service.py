@@ -1,7 +1,12 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models import Goal, _uuid, _utcnow
+
+
+def subdl_configured() -> bool:
+    return bool(settings.SUBDL_API_KEY)
 
 
 async def create_goal(

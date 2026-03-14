@@ -15,14 +15,21 @@ dependencies = [
     "fsrs>=4",
     "python-jose[cryptography]>=3.3",
     "authlib>=1.4",
+    "osmosis-media @ git+https://github.com/KUKARAF/osmosis-plugin-SRT.git",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "aiosqlite>=0.20"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

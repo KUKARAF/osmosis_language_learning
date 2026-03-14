@@ -5,11 +5,24 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from app.database import init_db
+from app import plugins
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+
+    # Discover and start all installed plugins
+    loaded = plugins.load_plugins()
+    for plugin in loaded:
+        await plugin.on_startup(app)
+        if router := plugin.get_router():
+            app.include_router(
+                router,
+                prefix=f"/api/plugins/{plugin.name}",
+                tags=[f"plugin:{plugin.name}"],
+            )
+
     yield
 
 

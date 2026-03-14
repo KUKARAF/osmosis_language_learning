@@ -1,7 +1,8 @@
-import { apiFetch, apiGet, apiPost } from './api.js';
+import { apiFetch, apiGet, apiPost, apiDelete } from './api.js';
 import { initCat } from './cat.js';
 
 let conversationId = null;
+let devMode = false;
 let abortController = null;
 
 export function teardownChat() {
@@ -165,4 +166,21 @@ export async function initChat() {
     const input = document.getElementById('chat-input');
     sendMessage(input.value);
   };
+
+  // Show clear-memory button in dev mode
+  const clearBtn = document.getElementById('clear-memory-btn');
+  if (devMode && clearBtn) {
+    clearBtn.hidden = false;
+    clearBtn.onclick = async () => {
+      if (!conversationId) return;
+      await apiDelete(`/chat/conversations/${conversationId}`);
+      conversationId = null;
+      document.getElementById('chat-messages').innerHTML = '';
+      await ensureConversation();
+    };
+  }
+}
+
+export function setDevMode(enabled) {
+  devMode = enabled;
 }

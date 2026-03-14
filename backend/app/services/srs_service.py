@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timezone
 
 from fsrs import Scheduler, Card, Rating, State
@@ -5,6 +6,9 @@ from sqlalchemy import delete, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import SRSCard, SRSReviewLog, GoalWord, _uuid, _utcnow
+from app.services import llm_service
+
+_POS_PLACEHOLDER = re.compile(r"^\[.+\]$")
 
 _scheduler = Scheduler()
 
@@ -135,6 +139,79 @@ async def delete_card(db: AsyncSession, card_id: str, user_id: str) -> None:
     )
     await db.delete(db_card)
     await db.commit()
+
+
+async def update_card(
+    db: AsyncSession, card_id: str, user_id: str, updates: dict
+) -> SRSCard:
+    result = await db.execute(
+        select(SRSCard).where(SRSCard.id == card_id, SRSCard.user_id == user_id)
+    )
+    db_card = result.scalar_one_or_none()
+    if db_card is None:
+        raise ValueError(f"Card {card_id} not found")
+    for field, value in updates.items():
+        if value is not None:
+            setattr(db_card, field, value)
+    await db.commit()
+    await db.refresh(db_card)
+    return db_card
+
+
+async def delete_all_cards(db: AsyncSession, user_id: str) -> int:
+    card_ids_q = select(SRSCard.id).where(SRSCard.user_id == user_id)
+    card_ids = (await db.execute(card_ids_q)).scalars().all()
+    if not card_ids:
+        return 0
+    await db.execute(
+        delete(SRSReviewLog).where(SRSReviewLog.card_id.in_(card_ids))
+    )
+    await db.execute(
+        delete(GoalWord).where(GoalWord.card_id.in_(card_ids))
+    )
+    await db.execute(
+        delete(SRSCard).where(SRSCard.user_id == user_id)
+    )
+    await db.commit()
+    return len(card_ids)
+
+
+async def generate_card_back(
+    db: AsyncSession, card_id: str, user_id: str, known_languages: list[str]
+) -> SRSCard:
+    result = await db.execute(
+        select(SRSCard).where(SRSCard.id == card_id, SRSCard.user_id == user_id)
+    )
+    db_card = result.scalar_one_or_none()
+    if db_card is None:
+        raise ValueError(f"Card {card_id} not found")
+
+    # Already has a real back — return as-is
+    if db_card.back and not _POS_PLACEHOLDER.match(db_card.back):
+        return db_card
+
+    native = known_languages[0] if known_languages else "English"
+    context_part = (
+        f'\nContext sentence: "{db_card.context_sentence}"'
+        if db_card.context_sentence
+        else ""
+    )
+    prompt = (
+        f"Translate the {db_card.language} word \"{db_card.front}\" into {native}. "
+        f"Give only the concise translation, nothing else.{context_part}"
+    )
+
+    provider, model = llm_service.get_summarization_provider()
+    translation = await llm_service.chat_completion(
+        messages=[{"role": "user", "content": prompt}],
+        provider=provider,
+        model=model,
+    )
+
+    db_card.back = translation.strip()
+    await db.commit()
+    await db.refresh(db_card)
+    return db_card
 
 
 async def get_stats(

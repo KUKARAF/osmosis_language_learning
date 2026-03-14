@@ -149,6 +149,37 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "load_goal_vocabulary",
+            "description": (
+                "Search for subtitles for a learning goal and import all vocabulary "
+                "into the user's spaced repetition system. Use this after creating a "
+                "goal when the user wants to load vocabulary from a specific episode "
+                "or movie. Each unique word becomes an SRS card linked to the goal."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "goal_id": {
+                        "type": "string",
+                        "description": "The goal ID to load vocabulary for",
+                    },
+                    "season": {
+                        "type": "integer",
+                        "description": "Season number (for TV series)",
+                    },
+                    "episode": {
+                        "type": "integer",
+                        "description": "Episode number (for TV series)",
+                    },
+                },
+                "required": ["goal_id"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "create_goal",
             "description": (
                 "Create a language learning goal for the user. Use this when the "
@@ -160,7 +191,7 @@ TOOLS = [
                 "properties": {
                     "title": {
                         "type": "string",
-                        "description": "Goal title",
+                        "description": "The media title only — e.g. 'Jujutsu Kaisen', 'The Office', 'Naruto'. Do NOT include 'Watch', 'Read', language names, or any other framing.",
                     },
                     "media_type": {
                         "type": "string",

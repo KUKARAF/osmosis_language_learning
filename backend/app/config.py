@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "sqlite+aiosqlite:///osmosis.db"
     OPENROUTER_API_KEY: str = ""
     GROQ_API_KEY: str = ""
+    SUBDL_API_KEY: str = ""
     OIDC_ISSUER: str = "https://auth.osmosis.page/application/o/osmosis/"
     OIDC_CLIENT_ID: str = "osmosis"
     OIDC_REDIRECT_URI: str = "http://localhost:8000/api/auth/callback"
@@ -16,3 +17,6 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+# ── Non-secret configuration ──────────────────────────────────────────
+SUMMARIZATION_MODEL = "google/gemini-2.0-flash-001"

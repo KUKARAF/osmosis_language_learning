@@ -3,12 +3,25 @@ from collections.abc import AsyncIterator
 
 import httpx
 
+from app import config
 from app.config import settings
 
 PROVIDERS = {
     "openrouter": {
         "base_url": "https://openrouter.ai/api/v1",
-        "model": "anthropic/claude-sonnet-4-5-20250929",
+        "model": "anthropic/claude-sonnet-4-5",
+        "api_key_attr": "OPENROUTER_API_KEY",
+    },
+    "groq": {
+        "base_url": "https://api.groq.com/openai/v1",
+        "model": "llama-3.3-70b-versatile",
+        "api_key_attr": "GROQ_API_KEY",
+    },
+}
+
+SUMMARIZATION_PROVIDERS = {
+    "openrouter": {
+        "base_url": "https://openrouter.ai/api/v1",
         "api_key_attr": "OPENROUTER_API_KEY",
     },
     "groq": {
@@ -71,6 +84,48 @@ def select_provider(context: str = "") -> str:
     if settings.GROQ_API_KEY and "quick" in context.lower():
         return "groq"
     return "openrouter"
+
+
+def get_summarization_provider() -> tuple[str, str]:
+    """Return (provider_key, model) for summarization. Prefer Groq if available."""
+    if settings.GROQ_API_KEY:
+        return "groq", SUMMARIZATION_PROVIDERS["groq"]["model"]
+    return "openrouter", config.SUMMARIZATION_MODEL
+
+
+async def chat_completion(
+    messages: list[dict],
+    provider: str = "openrouter",
+    model: str | None = None,
+) -> str:
+    """Non-streaming chat completion for summarization and other quick calls."""
+    prov = SUMMARIZATION_PROVIDERS[provider]
+    api_key = getattr(settings, prov["api_key_attr"])
+    model = model or prov.get("model") or config.SUMMARIZATION_MODEL
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    if provider == "openrouter":
+        headers["HTTP-Referer"] = "https://app.osmosis.page"
+        headers["X-Title"] = "osmosis"
+
+    body = {
+        "model": model,
+        "messages": messages,
+        "stream": False,
+    }
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        resp = await client.post(
+            f"{prov['base_url']}/chat/completions",
+            headers=headers,
+            json=body,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data["choices"][0]["message"]["content"]
 
 
 def count_tokens(messages: list[dict]) -> int:

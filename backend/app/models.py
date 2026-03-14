@@ -65,6 +65,8 @@ class Conversation(Base):
     user_id = Column(Text, ForeignKey("users.id"), nullable=False)
     cat_id = Column(Text, ForeignKey("cats.id"), nullable=False)
     title = Column(Text)
+    summary = Column(Text)
+    summary_through_msg_id = Column(Text)
     created_at = Column(Text, nullable=False, default=_utcnow)
 
     user = relationship("User", back_populates="conversations")
@@ -114,6 +116,7 @@ class SRSCard(Base):
     created_at = Column(Text, nullable=False, default=_utcnow)
 
     reviews = relationship("SRSReviewLog", back_populates="card")
+    goal_words = relationship("GoalWord", back_populates="card")
 
     __table_args__ = (
         Index("idx_srs_user_due", "user_id", "language", "fsrs_due"),
@@ -153,7 +156,20 @@ class Goal(Base):
     created_at = Column(Text, nullable=False, default=_utcnow)
     completed_at = Column(Text)
 
+    goal_words = relationship("GoalWord", back_populates="goal")
+
     __table_args__ = (Index("idx_goals_user", "user_id", "status"),)
+
+
+class GoalWord(Base):
+    __tablename__ = "goal_words"
+
+    goal_id = Column(Text, ForeignKey("goals.id"), primary_key=True)
+    card_id = Column(Text, ForeignKey("srs_cards.id"), primary_key=True)
+    added_at = Column(Text, nullable=False, default=_utcnow)
+
+    goal = relationship("Goal", back_populates="goal_words")
+    card = relationship("SRSCard", back_populates="goal_words")
 
 
 class Notification(Base):

@@ -82,4 +82,5 @@ async def me(user: User = Depends(get_current_user)) -> UserInfo:
         known_languages=known,
         target_language=user.target_language,
         streak_days=user.streak_days,
+        dev_mode=settings.DEV_MODE,
     )

@@ -46,3 +46,7 @@ export function apiPatch(path, body) {
     body: JSON.stringify(body),
   });
 }
+
+export function apiDelete(path) {
+  return apiFetch(path, { method: 'DELETE' });
+}

@@ -53,7 +53,10 @@
 
       <!-- Review page -->
       <div id="page-review" class="page">
-        <div id="review-stats"></div>
+        <div id="review-stats">
+          <span id="review-stats-text"></span>
+          <button id="delete-all-btn" class="btn btn-danger btn-small" hidden>delete all cards</button>
+        </div>
         <div id="flashcard-area">
           <div id="flashcard" class="flashcard">
             <div class="flashcard-inner">
@@ -67,7 +70,19 @@
             <button class="btn btn-rating" data-rating="3">good</button>
             <button class="btn btn-rating" data-rating="4">easy</button>
           </div>
-          <button id="delete-card-btn" class="btn btn-danger btn-small" hidden>delete card</button>
+          <div id="card-actions" hidden>
+            <button id="edit-card-btn" class="btn btn-small">edit</button>
+            <button id="delete-card-btn" class="btn btn-danger btn-small">delete card</button>
+          </div>
+          <form id="edit-card-form" class="edit-card-form" hidden>
+            <label>front <input type="text" id="edit-front"></label>
+            <label>back <input type="text" id="edit-back"></label>
+            <label>context <input type="text" id="edit-context"></label>
+            <div class="edit-card-actions">
+              <button type="submit" class="btn btn-small">save</button>
+              <button type="button" id="edit-cancel-btn" class="btn btn-small">cancel</button>
+            </div>
+          </form>
           <div id="no-cards-message" hidden>
             <p>no cards due for review. go chat with your cat!</p>
           </div>
@@ -77,6 +92,11 @@
       <!-- Goals page -->
       <div id="page-goals" class="page">
         <h2>goals</h2>
+        <form id="add-goal-form" class="add-goal-form">
+          <input type="text" id="add-goal-title" placeholder="title..." required>
+          <select id="add-goal-type"></select>
+          <button type="submit" class="btn btn-small">add</button>
+        </form>
         <div id="goals-list"></div>
         <p id="no-goals" hidden>no goals yet. tell the cat what you want to watch or read!</p>
       </div>

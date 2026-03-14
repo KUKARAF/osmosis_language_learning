@@ -1,10 +1,15 @@
-import { apiGet, apiPost, apiDelete } from './api.js';
+import { apiGet, apiPost, apiPatch, apiDelete } from './api.js';
 
 let cards = [];
 let currentIndex = 0;
+let _devMode = false;
+
+function needsGeneration(card) {
+  return !card.back || /^\[.+\]$/.test(card.back);
+}
 
 function renderStats(stats) {
-  const el = document.getElementById('review-stats');
+  const el = document.getElementById('review-stats-text');
   el.textContent = `cards learned: ${stats.total_reviews || 0} · streak: ${stats.streak_days || 0}d`;
 }
 
@@ -13,12 +18,14 @@ function renderCard(card) {
   const front = flashcard.querySelector('.flashcard-front');
   const back = flashcard.querySelector('.flashcard-back');
   const ratingBtns = document.getElementById('rating-buttons');
-  const deleteBtn = document.getElementById('delete-card-btn');
+  const cardActions = document.getElementById('card-actions');
+  const editForm = document.getElementById('edit-card-form');
   const noCards = document.getElementById('no-cards-message');
 
   flashcard.classList.remove('flipped');
   ratingBtns.hidden = true;
-  deleteBtn.hidden = true;
+  cardActions.hidden = true;
+  editForm.hidden = true;
 
   if (!card) {
     flashcard.hidden = true;
@@ -31,12 +38,24 @@ function renderCard(card) {
 
   const context = card.context_sentence ? `\n\n"${card.context_sentence}"` : '';
   front.textContent = card.front + context;
-  back.textContent = `${card.back}\n\n(${card.card_type || 'vocabulary'})`;
+  back.textContent = card.back;
 
-  flashcard.onclick = () => {
-    flashcard.classList.add('flipped');
-    ratingBtns.hidden = false;
-    deleteBtn.hidden = false;
+  flashcard.onclick = async () => {
+    const flipping = flashcard.classList.toggle('flipped');
+    ratingBtns.hidden = !flipping;
+    cardActions.hidden = !flipping;
+    if (!flipping) editForm.hidden = true;
+
+    if (flipping && needsGeneration(card)) {
+      back.textContent = 'translating...';
+      try {
+        const updated = await apiPost(`/srs/cards/${card.id}/generate-back`);
+        cards[currentIndex] = updated;
+        back.textContent = updated.back;
+      } catch {
+        back.textContent = 'translation failed';
+      }
+    }
   };
 }
 
@@ -51,7 +70,6 @@ async function submitRating(rating) {
     renderCard(cards[currentIndex]);
   } else {
     renderCard(null);
-    // Refresh stats after completing session
     try {
       const stats = await apiGet('/srs/stats');
       renderStats(stats);
@@ -77,6 +95,56 @@ async function deleteCard() {
   }
 }
 
+function showEditForm() {
+  const card = cards[currentIndex];
+  if (!card) return;
+
+  document.getElementById('edit-front').value = card.front || '';
+  document.getElementById('edit-back').value = card.back || '';
+  document.getElementById('edit-context').value = card.context_sentence || '';
+  document.getElementById('edit-card-form').hidden = false;
+}
+
+async function submitEdit(e) {
+  e.preventDefault();
+  const card = cards[currentIndex];
+  if (!card) return;
+
+  const body = {
+    front: document.getElementById('edit-front').value,
+    back: document.getElementById('edit-back').value,
+    context_sentence: document.getElementById('edit-context').value,
+  };
+
+  const updated = await apiPatch(`/srs/cards/${card.id}`, body);
+  cards[currentIndex] = updated;
+  document.getElementById('edit-card-form').hidden = true;
+  renderCard(updated);
+  // Re-flip to show updated back
+  document.getElementById('flashcard').classList.add('flipped');
+  document.getElementById('rating-buttons').hidden = false;
+  document.getElementById('card-actions').hidden = false;
+}
+
+async function deleteAllCards() {
+  if (!confirm('Delete ALL cards? This cannot be undone.')) return;
+
+  await apiDelete('/srs/cards');
+  cards = [];
+  currentIndex = 0;
+  renderCard(null);
+  try {
+    const stats = await apiGet('/srs/stats');
+    renderStats(stats);
+  } catch { /* ignore */ }
+}
+
+export function setDevMode(enabled) {
+  _devMode = enabled;
+  const btn = document.getElementById('delete-all-btn');
+  if (btn) btn.hidden = !enabled;
+}
+
 export async function initReview() {
   currentIndex = 0;
 
@@ -99,4 +167,15 @@ export async function initReview() {
   });
 
   document.getElementById('delete-card-btn').onclick = deleteCard;
+  document.getElementById('edit-card-btn').onclick = showEditForm;
+  document.getElementById('edit-card-form').onsubmit = submitEdit;
+  document.getElementById('edit-cancel-btn').onclick = () => {
+    document.getElementById('edit-card-form').hidden = true;
+  };
+  document.getElementById('delete-all-btn').onclick = deleteAllCards;
+
+  // Restore dev mode visibility
+  if (_devMode) {
+    document.getElementById('delete-all-btn').hidden = false;
+  }
 }

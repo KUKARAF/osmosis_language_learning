@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models import User
-from app.schemas import CardResponse, ReviewRequest, ReviewResponse, StatsResponse
+from app.schemas import CardResponse, CardUpdate, ReviewRequest, ReviewResponse, StatsResponse
 from app.services import srs_service
 
 router = APIRouter()
@@ -51,6 +52,49 @@ async def review_card(
         next_review=card.fsrs_due,
         scheduled_days=None,
     )
+
+
+@router.post("/cards/{card_id}/generate-back")
+async def generate_back(
+    card_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CardResponse:
+    import json
+    known = json.loads(user.known_languages) if user.known_languages else []
+    try:
+        card = await srs_service.generate_card_back(db, card_id, user.id, known)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return _card_response(card)
+
+
+@router.patch("/cards/{card_id}")
+async def update_card(
+    card_id: str,
+    body: CardUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> CardResponse:
+    updates = body.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    try:
+        card = await srs_service.update_card(db, card_id, user.id, updates)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return _card_response(card)
+
+
+@router.delete("/cards", status_code=204)
+async def delete_all_cards(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    if not settings.DEV_MODE:
+        raise HTTPException(status_code=403, detail="Only available in dev mode")
+    await srs_service.delete_all_cards(db, user.id)
+    return Response(status_code=204)
 
 
 @router.delete("/cards/{card_id}", status_code=204)

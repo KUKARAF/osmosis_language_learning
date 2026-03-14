@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -76,6 +76,29 @@ async def get_messages(
         )
         for m in result.scalars().all()
     ]
+
+
+@router.delete("/conversations/{conversation_id}")
+async def delete_conversation(
+    conversation_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Conversation).where(
+            Conversation.id == conversation_id,
+            Conversation.user_id == user.id,
+        )
+    )
+    conv = result.scalar_one_or_none()
+    if conv is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    # Delete messages first (FK constraint)
+    from sqlalchemy import delete
+    await db.execute(delete(Message).where(Message.conversation_id == conv.id))
+    await db.delete(conv)
+    await db.commit()
+    return {"status": "deleted"}
 
 
 @router.post("/conversations/{conversation_id}/messages")

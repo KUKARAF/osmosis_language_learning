@@ -13,6 +13,7 @@ class UserInfo(BaseModel):
     known_languages: list[str] = []
     target_language: str | None = None
     streak_days: int = 0
+    dev_mode: bool = False
 
 
 # --- Chat ---
@@ -59,6 +60,12 @@ class CardResponse(BaseModel):
     created_at: str
 
 
+class CardUpdate(BaseModel):
+    front: str | None = None
+    back: str | None = None
+    context_sentence: str | None = None
+
+
 class ReviewRequest(BaseModel):
     rating: int  # 1-4
 
@@ -98,6 +105,11 @@ class GoalCreate(BaseModel):
     language: str | None = None
 
 
+class GoalAction(BaseModel):
+    id: str
+    label: str
+
+
 class GoalResponse(BaseModel):
     id: str
     title: str
@@ -106,8 +118,27 @@ class GoalResponse(BaseModel):
     status: str
     total_words: int | None = None
     known_words: int | None = None
+    actions: list[GoalAction] = []
     created_at: str
     completed_at: str | None = None
+
+
+class SubtitleResult(BaseModel):
+    name: str
+    url: str
+    lang: str
+    full_name: str | None = None
+
+
+class SubtitleImportRequest(BaseModel):
+    subdl_url: str
+
+
+class SubtitleImportResponse(BaseModel):
+    total_words: int
+    new_cards: int
+    existing_cards: int
+    subtitle_name: str | None = None
 
 
 # --- Notification ---

@@ -257,11 +257,6 @@ main {
 }
 
 /* --- Flashcards --- */
-#review-stats {
-  padding: 8px 0;
-  font-size: 0.85em;
-  color: var(--text-dim);
-}
 
 #flashcard-area {
   flex: 1;
@@ -336,7 +331,66 @@ main {
 .btn-rating[data-rating="3"]:hover { background: var(--success); }
 .btn-rating[data-rating="4"]:hover { background: #60a5fa; }
 
-#delete-card-btn { margin-top: -8px; }
+#card-actions {
+  gap: 8px;
+  margin-top: -8px;
+}
+
+#card-actions:not([hidden]) {
+  display: flex;
+}
+
+/* --- Edit card form --- */
+.edit-card-form {
+  width: 100%;
+  max-width: 400px;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.edit-card-form:not([hidden]) {
+  display: flex;
+}
+
+.edit-card-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8em;
+  color: var(--text-dim);
+}
+
+.edit-card-form input {
+  background: var(--surface);
+  border: 1px solid var(--surface2);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 1em;
+  outline: none;
+}
+
+.edit-card-form input:focus {
+  border-color: var(--accent);
+}
+
+.edit-card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* --- Review stats bar --- */
+#review-stats {
+  padding: 8px 0;
+  font-size: 0.85em;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#delete-all-btn { margin-left: auto; }
 
 /* --- Goals --- */
 #goals-list {
@@ -396,6 +450,86 @@ main {
   height: 100%;
   background: var(--success);
   transition: width 0.3s;
+}
+
+.add-goal-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.add-goal-form input,
+.add-goal-form select {
+  background: var(--surface);
+  border: 1px solid var(--surface2);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 0.85em;
+  outline: none;
+}
+
+.add-goal-form input {
+  flex: 1;
+}
+
+.add-goal-form input:focus,
+.add-goal-form select:focus {
+  border-color: var(--accent);
+}
+
+.goal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.btn-action {
+  background: var(--surface2);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-action:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.import-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  align-items: center;
+}
+
+.import-form input {
+  background: var(--surface2);
+  border: 1px solid var(--surface2);
+  color: var(--text);
+  padding: 4px 8px;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 0.8em;
+  width: 80px;
+  outline: none;
+}
+
+.import-form input:focus {
+  border-color: var(--accent);
+}
+
+.goal-import-result {
+  margin-top: 8px;
+  font-size: 0.8em;
+}
+
+.goal-import-success {
+  color: var(--success);
+}
+
+.goal-import-error {
+  color: var(--danger);
 }
 
 /* --- Settings --- */
