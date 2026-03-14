@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from './api.js';
+import { apiGet, apiPost, apiDelete } from './api.js';
 
 let cards = [];
 let currentIndex = 0;
@@ -13,10 +13,12 @@ function renderCard(card) {
   const front = flashcard.querySelector('.flashcard-front');
   const back = flashcard.querySelector('.flashcard-back');
   const ratingBtns = document.getElementById('rating-buttons');
+  const deleteBtn = document.getElementById('delete-card-btn');
   const noCards = document.getElementById('no-cards-message');
 
   flashcard.classList.remove('flipped');
   ratingBtns.hidden = true;
+  deleteBtn.hidden = true;
 
   if (!card) {
     flashcard.hidden = true;
@@ -34,6 +36,7 @@ function renderCard(card) {
   flashcard.onclick = () => {
     flashcard.classList.add('flipped');
     ratingBtns.hidden = false;
+    deleteBtn.hidden = false;
   };
 }
 
@@ -49,6 +52,24 @@ async function submitRating(rating) {
   } else {
     renderCard(null);
     // Refresh stats after completing session
+    try {
+      const stats = await apiGet('/srs/stats');
+      renderStats(stats);
+    } catch { /* ignore */ }
+  }
+}
+
+async function deleteCard() {
+  const card = cards[currentIndex];
+  if (!card) return;
+
+  await apiDelete(`/srs/cards/${card.id}`);
+
+  cards.splice(currentIndex, 1);
+  if (currentIndex < cards.length) {
+    renderCard(cards[currentIndex]);
+  } else {
+    renderCard(null);
     try {
       const stats = await apiGet('/srs/stats');
       renderStats(stats);
@@ -76,4 +97,6 @@ export async function initReview() {
   document.querySelectorAll('.btn-rating').forEach(btn => {
     btn.onclick = () => submitRating(Number(btn.dataset.rating));
   });
+
+  document.getElementById('delete-card-btn').onclick = deleteCard;
 }

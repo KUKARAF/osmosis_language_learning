@@ -147,6 +147,11 @@ main {
   color: white;
 }
 
+.btn-small {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
 .btn-groom {
   background: var(--success);
   color: #111;
@@ -331,6 +336,8 @@ main {
 .btn-rating[data-rating="3"]:hover { background: var(--success); }
 .btn-rating[data-rating="4"]:hover { background: #60a5fa; }
 
+#delete-card-btn { margin-top: -8px; }
+
 /* --- Goals --- */
 #goals-list {
   display: flex;
@@ -345,9 +352,31 @@ main {
   border-radius: var(--radius);
 }
 
+.goal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
 .goal-title {
   font-weight: bold;
   margin-bottom: 4px;
+}
+
+.goal-delete-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1.2em;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+.goal-delete-btn:hover {
+  color: var(--danger, #e05);
 }
 
 .goal-meta {

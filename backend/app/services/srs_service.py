@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 
 from fsrs import Scheduler, Card, Rating, State
-from sqlalchemy import select, func
+from sqlalchemy import delete, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import SRSCard, SRSReviewLog, _uuid, _utcnow
+from app.models import SRSCard, SRSReviewLog, GoalWord, _uuid, _utcnow
 
 _scheduler = Scheduler()
 
@@ -23,7 +23,7 @@ def _card_from_db(db_card: SRSCard) -> Card:
     card.step = db_card.fsrs_reps  # fsrs v6 uses `step`
     if db_card.fsrs_last_review:
         card.last_review = datetime.fromisoformat(db_card.fsrs_last_review)
-    card.state = State(db_card.fsrs_state)
+    card.state = State(db_card.fsrs_state) if db_card.fsrs_state in (1, 2, 3) else State.Learning
     return card
 
 
@@ -33,7 +33,7 @@ def _save_card_state(db_card: SRSCard, card: Card) -> None:
     db_card.fsrs_difficulty = card.difficulty
     db_card.fsrs_due = card.due.isoformat() if card.due else None
     db_card.fsrs_last_review = card.last_review.isoformat() if card.last_review else None
-    db_card.fsrs_reps = card.step  # store step as reps
+    db_card.fsrs_reps = card.step if card.step is not None else 0
     db_card.fsrs_state = card.state.value if hasattr(card.state, "value") else int(card.state)
 
 
@@ -118,6 +118,23 @@ async def find_or_create_card(
     await db.commit()
     await db.refresh(card)
     return card
+
+
+async def delete_card(db: AsyncSession, card_id: str, user_id: str) -> None:
+    result = await db.execute(
+        select(SRSCard).where(SRSCard.id == card_id, SRSCard.user_id == user_id)
+    )
+    db_card = result.scalar_one_or_none()
+    if db_card is None:
+        raise ValueError(f"Card {card_id} not found")
+    await db.execute(
+        delete(SRSReviewLog).where(SRSReviewLog.card_id == card_id)
+    )
+    await db.execute(
+        delete(GoalWord).where(GoalWord.card_id == card_id)
+    )
+    await db.delete(db_card)
+    await db.commit()
 
 
 async def get_stats(

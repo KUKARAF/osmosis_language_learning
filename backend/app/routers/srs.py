@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -51,6 +51,19 @@ async def review_card(
         next_review=card.fsrs_due,
         scheduled_days=None,
     )
+
+
+@router.delete("/cards/{card_id}", status_code=204)
+async def delete_card(
+    card_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    try:
+        await srs_service.delete_card(db, card_id, user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return Response(status_code=204)
 
 
 @router.get("/stats")

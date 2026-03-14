@@ -47,6 +47,7 @@
         <form id="chat-form">
           <input type="text" id="chat-input" placeholder="say something..." autocomplete="off">
           <button type="submit" class="btn">send</button>
+          <button type="button" id="clear-memory-btn" class="btn btn-danger btn-small" hidden title="Clear conversation summary">clear memory</button>
         </form>
       </div>
 
@@ -66,6 +67,7 @@
             <button class="btn btn-rating" data-rating="3">good</button>
             <button class="btn btn-rating" data-rating="4">easy</button>
           </div>
+          <button id="delete-card-btn" class="btn btn-danger btn-small" hidden>delete card</button>
           <div id="no-cards-message" hidden>
             <p>no cards due for review. go chat with your cat!</p>
           </div>
