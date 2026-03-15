@@ -8,6 +8,11 @@ from app.database import init_db
 from app import plugins
 from app.llm.prompt_loader import registry as prompt_registry
 
+# Load plugins at import time so routers can be registered at module level
+# (include_router must not be called inside the lifespan — FastAPI will
+# recursively merge lifespans and crash)
+_plugins = plugins.load_plugins()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -16,26 +21,19 @@ async def lifespan(app: FastAPI):
     # Register core prompts first (lowest priority)
     prompt_registry.register_dir(Path(__file__).parent / "prompts")
 
-    # Discover and start all installed plugins
-    loaded = plugins.load_plugins()
-    for plugin in loaded:
-        # Register plugin prompts (higher priority than core)
-        if prompts_dir := plugin.get_prompts_dir():
+    # Register plugin prompts (higher priority than core) and run startup hooks
+    for plugin in _plugins:
+        get_pd = getattr(plugin, "get_prompts_dir", None)
+        if get_pd and (prompts_dir := get_pd()):
             prompt_registry.register_dir(prompts_dir)
         await plugin.on_startup(app)
-        if router := plugin.get_router():
-            app.include_router(
-                router,
-                prefix=f"/api/plugins/{plugin.name}",
-                tags=[f"plugin:{plugin.name}"],
-            )
 
     yield
 
 
 app = FastAPI(title="osmosis", version="0.1.0", lifespan=lifespan)
 
-# --- routers (mounted after they exist) ---
+# --- built-in routers ---
 from app.routers import (  # noqa: E402
     auth,
     billing,
@@ -59,6 +57,16 @@ app.include_router(
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(billing.router, prefix="/api/billing", tags=["billing"])
 app.include_router(communes.router, prefix="/api/communes", tags=["communes"])
+
+# --- plugin routers (included at module level, not inside lifespan) ---
+for _plugin in _plugins:
+    get_r = getattr(_plugin, "get_router", None)
+    if get_r and (_router := get_r()):
+        app.include_router(
+            _router,
+            prefix=f"/api/plugins/{_plugin.name}",
+            tags=[f"plugin:{_plugin.name}"],
+        )
 
 # --- static frontend (must be last so it doesn't shadow /api) ---
 frontend_dir = Path(__file__).resolve().parent.parent.parent / "frontend"

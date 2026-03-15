@@ -44,6 +44,38 @@ class GroqProvider:
             resp.raise_for_status()
             return resp.json()["choices"][0]["message"]["content"]
 
+    async def speak(
+        self,
+        text: str,
+        voice: str = "Aria-PlayAI",
+    ) -> bytes:
+        """Synthesize speech using Groq PlayAI TTS. Returns raw mp3 bytes."""
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                f"{_BASE_URL}/audio/speech",
+                headers={"Authorization": f"Bearer {settings.GROQ_API_KEY}"},
+                json={"model": "playai-tts", "input": text, "voice": voice},
+            )
+            resp.raise_for_status()
+            return resp.content
+
+    async def transcribe(
+        self,
+        audio_bytes: bytes,
+        filename: str,
+        language: str,
+    ) -> str:
+        """Transcribe audio using Groq Whisper."""
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                f"{_BASE_URL}/audio/transcriptions",
+                headers={"Authorization": f"Bearer {settings.GROQ_API_KEY}"},
+                files={"file": (filename, audio_bytes, "audio/webm")},
+                data={"model": "whisper-large-v3-turbo", "language": language},
+            )
+            resp.raise_for_status()
+            return resp.json()["text"]
+
     async def chat_completion_stream(
         self,
         messages: list[dict],

@@ -1,4 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+import json
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -7,6 +11,24 @@ from app.dependencies import get_current_user
 from app.models import User
 from app.schemas import CardResponse, CardUpdate, ReviewRequest, ReviewResponse, StatsResponse
 from app.services import srs_service
+from app import llm as app_llm
+from app.llm.prompt_loader import registry as prompt_registry
+
+
+class SpeakRequest(BaseModel):
+    text: str
+    voice: str = "Aria-PlayAI"
+
+
+class EvaluateRequest(BaseModel):
+    user_answer: str
+    card_prompt: str
+    correct_answer: str
+
+
+class EvaluateResponse(BaseModel):
+    rating: int
+    explanation: str
 
 router = APIRouter()
 
@@ -67,6 +89,77 @@ async def generate_back(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return _card_response(card)
+
+
+@router.post("/cards/{card_id}/speak")
+async def speak_text(
+    card_id: str,
+    body: SpeakRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> StreamingResponse:
+    """Synthesize speech using Groq PlayAI TTS. Returns mp3 audio."""
+    try:
+        audio_bytes = await app_llm.speak(body.text, voice=body.voice)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"TTS failed: {exc}") from exc
+
+    import io
+    return StreamingResponse(
+        io.BytesIO(audio_bytes),
+        media_type="audio/mpeg",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@router.post("/cards/{card_id}/transcribe")
+async def transcribe_audio(
+    card_id: str,
+    audio: UploadFile = File(...),
+    language: str = Form("en"),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Transcribe a recorded answer using Groq Whisper STT."""
+    audio_bytes = await audio.read()
+    try:
+        text = await app_llm.transcribe_audio(
+            audio_bytes, audio.filename or "recording.webm", language
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Transcription failed: {exc}") from exc
+    return {"text": text}
+
+
+@router.post("/cards/{card_id}/evaluate")
+async def evaluate_answer(
+    card_id: str,
+    body: EvaluateRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> EvaluateResponse:
+    """Evaluate a learner's typed/spoken answer against the correct answer."""
+    meta, prompt_body = prompt_registry.render(
+        "card_evaluation",
+        card_prompt=body.card_prompt,
+        correct_answer=body.correct_answer,
+        user_answer=body.user_answer,
+    )
+    model = meta.get("model", app_llm.summarization_model())
+    try:
+        raw = await app_llm.chat_completion(
+            messages=[{"role": "user", "content": prompt_body}],
+            model=model,
+            temperature=float(meta.get("temperature", 0.2)),
+            response_format={"type": "json_object"},
+        )
+        data = json.loads(raw)
+        return EvaluateResponse(
+            rating=int(data["rating"]),
+            explanation=data["explanation"],
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Evaluation failed: {exc}") from exc
 
 
 @router.patch("/cards/{card_id}")

@@ -67,13 +67,37 @@
               <div class="flashcard-back"></div>
             </div>
           </div>
+
+          <!-- Answer input area (visible before flip) -->
+          <div id="answer-area">
+            <div class="answer-input-row">
+              <input type="text" id="answer-input" placeholder="type your answer..." autocomplete="off">
+              <button type="button" id="mic-btn" class="btn icon-btn" title="Record answer">🎤</button>
+            </div>
+            <div id="recording-status" hidden>
+              <span class="recording-dot">●</span> recording — click 🎤 to stop
+            </div>
+          </div>
+
+          <!-- Pre-flip actions -->
+          <div id="preflip-actions">
+            <button id="flip-btn" class="btn">flip ↓</button>
+            <button id="easy-preflip-btn" class="btn btn-rating" data-rating="4" title="I know it — mark as easy without flipping">i know it</button>
+          </div>
+
+          <!-- Evaluation result (shown after flip when answer was given) -->
+          <div id="eval-panel" hidden>
+            <div id="eval-explanation"></div>
+          </div>
+
           <div id="rating-buttons" hidden>
             <button class="btn btn-rating" data-rating="1">again</button>
             <button class="btn btn-rating" data-rating="2">hard</button>
             <button class="btn btn-rating" data-rating="3">good</button>
-            <button class="btn btn-rating" data-rating="4">easy</button>
+            <button id="easy-postflip-btn" class="btn btn-rating" data-rating="4">easy</button>
           </div>
           <div id="card-actions" hidden>
+            <button id="speak-btn" class="btn btn-small" title="Listen to pronunciation">🔊</button>
             <button id="edit-card-btn" class="btn btn-small">edit</button>
             <button id="delete-card-btn" class="btn btn-danger btn-small">delete card</button>
           </div>

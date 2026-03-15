@@ -638,6 +638,82 @@ hr {
   margin-top: 2px;
 }
 
+/* --- Answer input area --- */
+#answer-area {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.answer-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+#answer-input {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--surface2);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 0.9em;
+  outline: none;
+}
+
+#answer-input:focus {
+  border-color: var(--accent);
+}
+
+#recording-status {
+  font-size: 0.8em;
+  color: var(--danger);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.recording-dot {
+  animation: blink 0.8s infinite;
+}
+
+/* --- Pre-flip actions --- */
+#preflip-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* --- Evaluation panel --- */
+#eval-panel {
+  width: 100%;
+  max-width: 400px;
+  background: var(--surface);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 0.85em;
+  line-height: 1.5;
+}
+
+#eval-explanation {
+  color: var(--text);
+}
+
+/* --- Rating button states --- */
+.btn-rating-suggested {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+  font-weight: bold;
+}
+
+.btn-rating-disabled {
+  opacity: 0.35;
+  cursor: not-allowed !important;
+}
+
 /* --- Grammar card back --- */
 .card-type-chip {
   font-size: 0.6em;

@@ -4,7 +4,14 @@ let cards = [];
 let currentIndex = 0;
 let _devMode = false;
 
+// State for the current card's review session
+let _lastQuiz = null;       // grammar quiz data for evaluation
+let _mediaRecorder = null;  // active MediaRecorder instance
+let _audioChunks = [];
+let _currentSpeakText = ''; // text shown on the flipped back (for TTS)
+
 const GRAMMAR_TYPES = new Set(['conjugation', 'pattern', 'gender']);
+const RATING_LABELS = { 1: 'again', 2: 'hard', 3: 'good', 4: 'easy' };
 
 function isGrammarCard(card) {
   return GRAMMAR_TYPES.has(card.card_type);
@@ -19,13 +26,144 @@ function renderStats(stats) {
   el.textContent = `cards learned: ${stats.total_reviews || 0} · streak: ${stats.streak_days || 0}d`;
 }
 
+// ── Recording ────────────────────────────────────────────────────────────────
+
+async function startRecording(card) {
+  if (_mediaRecorder) return; // already recording
+
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch {
+    alert('Microphone access denied.');
+    return;
+  }
+
+  _audioChunks = [];
+  _mediaRecorder = new MediaRecorder(stream);
+  _mediaRecorder.ondataavailable = e => { if (e.data.size > 0) _audioChunks.push(e.data); };
+  _mediaRecorder.onstop = async () => {
+    stream.getTracks().forEach(t => t.stop());
+    const blob = new Blob(_audioChunks, { type: 'audio/webm' });
+    _mediaRecorder = null;
+    document.getElementById('recording-status').hidden = true;
+    document.getElementById('mic-btn').textContent = '🎤';
+
+    const fd = new FormData();
+    fd.append('audio', blob, 'recording.webm');
+    fd.append('language', card.language || 'en');
+
+    const input = document.getElementById('answer-input');
+    input.placeholder = 'transcribing...';
+    try {
+      const res = await fetch(`/api/srs/cards/${card.id}/transcribe`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        body: fd,
+      });
+      if (!res.ok) throw new Error(res.statusText);
+      const data = await res.json();
+      input.value = data.text;
+      input.placeholder = 'type your answer...';
+    } catch {
+      input.placeholder = 'transcription failed';
+    }
+  };
+
+  _mediaRecorder.start();
+  document.getElementById('recording-status').hidden = false;
+  document.getElementById('mic-btn').textContent = '⏹';
+
+  // Auto-stop after 30s
+  setTimeout(() => { if (_mediaRecorder) stopRecording(); }, 30000);
+}
+
+function stopRecording() {
+  if (_mediaRecorder && _mediaRecorder.state !== 'inactive') {
+    _mediaRecorder.stop();
+  }
+}
+
+// ── TTS ──────────────────────────────────────────────────────────────────────
+
+async function speakText(card, text) {
+  if (!text) return;
+  const btn = document.getElementById('speak-btn');
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  try {
+    const token = localStorage.getItem('token');
+    const resp = await fetch(`/api/srs/cards/${card.id}/speak`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text }),
+    });
+    if (!resp.ok) throw new Error(resp.statusText);
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.onended = () => URL.revokeObjectURL(url);
+    await audio.play();
+  } catch {
+    // silent fail — TTS is a nice-to-have
+  } finally {
+    btn.textContent = '🔊';
+    btn.disabled = false;
+  }
+}
+
+// ── Evaluation ───────────────────────────────────────────────────────────────
+
+async function evaluateAnswer(card, userAnswer) {
+  let cardPrompt, correctAnswer;
+
+  if (isGrammarCard(card) && _lastQuiz) {
+    cardPrompt = _lastQuiz.prompt || card.front;
+    if (_lastQuiz.type === 'conjugation' && _lastQuiz.answer && typeof _lastQuiz.answer === 'object') {
+      correctAnswer = Object.entries(_lastQuiz.answer)
+        .map(([p, f]) => `${p}: ${f}`).join(', ');
+    } else {
+      correctAnswer = _lastQuiz.answer || '';
+    }
+  } else {
+    cardPrompt = card.front;
+    correctAnswer = card.back || '';
+  }
+
+  const panel = document.getElementById('eval-panel');
+  const explEl = document.getElementById('eval-explanation');
+  panel.hidden = false;
+  explEl.textContent = 'evaluating...';
+
+  try {
+    const result = await apiPost(`/srs/cards/${card.id}/evaluate`, {
+      user_answer: userAnswer,
+      card_prompt: cardPrompt,
+      correct_answer: correctAnswer,
+    });
+
+    explEl.textContent = result.explanation;
+    panel.dataset.rating = result.rating;
+
+    // Highlight suggested rating button
+    document.querySelectorAll('.btn-rating').forEach(btn => {
+      btn.classList.remove('btn-rating-suggested');
+    });
+    const suggested = document.querySelector(`.btn-rating[data-rating="${result.rating}"]`);
+    if (suggested) suggested.classList.add('btn-rating-suggested');
+
+  } catch {
+    explEl.textContent = 'evaluation failed — rate manually';
+  }
+}
+
+// ── Card rendering ────────────────────────────────────────────────────────────
+
 function renderGrammarBack(back, quiz) {
   back.innerHTML = '';
-
-  const chip = document.createElement('span');
-  chip.className = 'card-type-chip';
-  chip.textContent = quiz.type || 'grammar';
-  back.appendChild(chip);
 
   if (quiz.type === 'conjugation' && quiz.answer && typeof quiz.answer === 'object') {
     const table = document.createElement('table');
@@ -58,40 +196,78 @@ function renderGrammarBack(back, quiz) {
   }
 }
 
+function setPreFlipUI() {
+  document.getElementById('answer-area').hidden = false;
+  document.getElementById('preflip-actions').hidden = false;
+  document.getElementById('rating-buttons').hidden = true;
+  document.getElementById('card-actions').hidden = true;
+  document.getElementById('eval-panel').hidden = true;
+  document.getElementById('answer-input').value = '';
+  document.getElementById('recording-status').hidden = true;
+  document.getElementById('mic-btn').textContent = '🎤';
+
+  // Reset suggested rating
+  document.querySelectorAll('.btn-rating').forEach(btn => {
+    btn.classList.remove('btn-rating-suggested');
+    btn.disabled = false;
+    btn.title = '';
+  });
+  _lastQuiz = null;
+  _currentSpeakText = '';
+}
+
+function setPostFlipUI(hasAnswer) {
+  document.getElementById('answer-area').hidden = true;
+  document.getElementById('preflip-actions').hidden = true;
+  document.getElementById('rating-buttons').hidden = false;
+  document.getElementById('card-actions').hidden = false;
+
+  // Easy is disabled unless the user provided an answer
+  const easyBtn = document.getElementById('easy-postflip-btn');
+  if (!hasAnswer) {
+    easyBtn.disabled = true;
+    easyBtn.title = 'type or say your answer to mark as easy';
+    easyBtn.classList.add('btn-rating-disabled');
+  } else {
+    easyBtn.disabled = false;
+    easyBtn.title = '';
+    easyBtn.classList.remove('btn-rating-disabled');
+  }
+}
+
 function renderCard(card) {
   const flashcard = document.getElementById('flashcard');
   const front = flashcard.querySelector('.flashcard-front');
   const back = flashcard.querySelector('.flashcard-back');
-  const ratingBtns = document.getElementById('rating-buttons');
-  const cardActions = document.getElementById('card-actions');
   const editForm = document.getElementById('edit-card-form');
   const noCards = document.getElementById('no-cards-message');
 
   flashcard.classList.remove('flipped');
-  ratingBtns.hidden = true;
-  cardActions.hidden = true;
   editForm.hidden = true;
+  stopRecording();
 
   if (!card) {
     flashcard.hidden = true;
     noCards.hidden = false;
+    document.getElementById('answer-area').hidden = true;
+    document.getElementById('preflip-actions').hidden = true;
+    document.getElementById('rating-buttons').hidden = true;
+    document.getElementById('card-actions').hidden = true;
+    document.getElementById('eval-panel').hidden = true;
     return;
   }
 
   flashcard.hidden = false;
+  noCards.hidden = false;
   noCards.hidden = true;
 
-  // Front face
-  const wordEl = front.querySelector('.card-word');
-  const ctxEl = front.querySelector('.card-context');
-
-  // Show card type chip on front for grammar cards
+  // Card-type chip on front for grammar cards
   let chipEl = front.querySelector('.card-type-chip');
   if (isGrammarCard(card)) {
     if (!chipEl) {
       chipEl = document.createElement('span');
       chipEl.className = 'card-type-chip';
-      front.insertBefore(chipEl, wordEl);
+      front.insertBefore(chipEl, front.querySelector('.card-word'));
     }
     chipEl.textContent = card.card_type;
     chipEl.hidden = false;
@@ -99,29 +275,33 @@ function renderCard(card) {
     chipEl.hidden = true;
   }
 
-  wordEl.textContent = card.front;
-  ctxEl.textContent = card.context_sentence ? `"${card.context_sentence}"` : '';
-
-  // Back face — clear for fresh render
+  front.querySelector('.card-word').textContent = card.front;
+  front.querySelector('.card-context').textContent =
+    card.context_sentence ? `"${card.context_sentence}"` : '';
   back.textContent = '';
 
-  flashcard.onclick = async () => {
-    const flipping = flashcard.classList.toggle('flipped');
-    ratingBtns.hidden = !flipping;
-    cardActions.hidden = !flipping;
-    if (!flipping) editForm.hidden = true;
+  setPreFlipUI();
 
-    if (!flipping) return;
+  // ── Flip logic ───────────────────────────────────────────────────────────
+  async function doFlip() {
+    if (flashcard.classList.contains('flipped')) return; // already flipped
+    stopRecording();
+
+    const userAnswer = document.getElementById('answer-input').value.trim();
+    flashcard.classList.add('flipped');
+    setPostFlipUI(!!userAnswer);
 
     if (isGrammarCard(card)) {
       back.textContent = 'generating quiz...';
       try {
         const quiz = await apiPost(`/api/plugins/grammar/quiz/${card.id}`);
-        // Show quiz prompt on front, answer on back
-        wordEl.textContent = quiz.prompt || card.front;
+        _lastQuiz = quiz;
+        front.querySelector('.card-word').textContent = quiz.prompt || card.front;
         renderGrammarBack(back, quiz);
+        _currentSpeakText = quiz.example || quiz.answer || '';
       } catch {
         back.textContent = 'quiz generation failed';
+        _currentSpeakText = '';
       }
     } else if (needsGeneration(card)) {
       back.textContent = 'translating...';
@@ -129,14 +309,26 @@ function renderCard(card) {
         const updated = await apiPost(`/srs/cards/${card.id}/generate-back`);
         cards[currentIndex] = updated;
         back.textContent = updated.back;
+        _currentSpeakText = card.front; // speak the target-language word
       } catch {
         back.textContent = 'translation failed';
+        _currentSpeakText = '';
       }
     } else {
       back.textContent = card.back;
+      _currentSpeakText = card.front; // speak the target-language word
     }
-  };
+
+    if (userAnswer) {
+      await evaluateAnswer(card, userAnswer);
+    }
+  }
+
+  flashcard.onclick = doFlip;
+  document.getElementById('flip-btn').onclick = doFlip;
 }
+
+// ── Rating & navigation ───────────────────────────────────────────────────────
 
 async function submitRating(rating) {
   const card = cards[currentIndex];
@@ -199,10 +391,8 @@ async function submitEdit(e) {
   cards[currentIndex] = updated;
   document.getElementById('edit-card-form').hidden = true;
   renderCard(updated);
-  // Re-flip to show updated back
   document.getElementById('flashcard').classList.add('flipped');
-  document.getElementById('rating-buttons').hidden = false;
-  document.getElementById('card-actions').hidden = false;
+  setPostFlipUI(false);
 }
 
 async function deleteAllCards() {
@@ -241,10 +431,32 @@ export async function initReview() {
     renderCard(null);
   }
 
-  document.querySelectorAll('.btn-rating').forEach(btn => {
-    btn.onclick = () => submitRating(Number(btn.dataset.rating));
+  // Rating buttons (post-flip)
+  document.querySelectorAll('.btn-rating[data-rating]').forEach(btn => {
+    btn.onclick = () => {
+      if (btn.disabled) return;
+      submitRating(Number(btn.dataset.rating));
+    };
   });
 
+  // Pre-flip "i know it" (easy without flipping)
+  document.getElementById('easy-preflip-btn').onclick = () => submitRating(4);
+
+  // Mic button
+  document.getElementById('mic-btn').onclick = () => {
+    const card = cards[currentIndex];
+    if (!card) return;
+    if (_mediaRecorder) {
+      stopRecording();
+    } else {
+      startRecording(card);
+    }
+  };
+
+  document.getElementById('speak-btn').onclick = () => {
+    const card = cards[currentIndex];
+    if (card && _currentSpeakText) speakText(card, _currentSpeakText);
+  };
   document.getElementById('delete-card-btn').onclick = deleteCard;
   document.getElementById('edit-card-btn').onclick = showEditForm;
   document.getElementById('edit-card-form').onsubmit = submitEdit;
@@ -253,7 +465,6 @@ export async function initReview() {
   };
   document.getElementById('delete-all-btn').onclick = deleteAllCards;
 
-  // Restore dev mode visibility
   if (_devMode) {
     document.getElementById('delete-all-btn').hidden = false;
   }
