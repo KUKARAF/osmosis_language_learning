@@ -13,6 +13,7 @@ No osmosis source code changes required.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
@@ -77,6 +78,13 @@ class OsmosisPlugin(Protocol):
             label:       str        — button label shown in UI
         """
         return []
+
+    def get_prompts_dir(self) -> Path | None:
+        """
+        Return a directory of .prompt files to register, or None.
+        Plugin prompts take priority over core prompts.
+        """
+        return None
 
     async def on_startup(self, app: "FastAPI") -> None:
         """Called once during app lifespan startup."""

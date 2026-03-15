@@ -775,6 +775,7 @@ dependencies = [
     { name = "osmosis-media" },
     { name = "pydantic-settings" },
     { name = "python-jose", extra = ["cryptography"] },
+    { name = "pyyaml" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -801,6 +802,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
     { name = "python-jose", extras = ["cryptography"], specifier = ">=3.3" },
+    { name = "pyyaml", specifier = ">=6.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34" },
 ]

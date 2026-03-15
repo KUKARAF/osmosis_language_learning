@@ -5,36 +5,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Conversation, Message
-from app.services import llm_service
+from app import llm as app_llm
+from app.llm.prompt_loader import registry as prompt_registry
 
 log = logging.getLogger(__name__)
 
 RECENT_TURNS_TO_KEEP = 3
 TOOL_CONTENT_MAX_LEN = 200
-
-SUMMARIZATION_PROMPT = """\
-You are a summarization assistant for a language-learning chat app.
-Condense the conversation below into a concise summary that preserves:
-- Language topics discussed and vocabulary/grammar introduced
-- Key facts about the user (name, interests, proficiency level)
-- Learning goals and progress
-- Any corrections or explanations given
-
-Write in 2nd person ("you asked about…", "you learned…").
-Keep it under 300 words. Do NOT include greetings or filler."""
-
-INCREMENTAL_PROMPT = """\
-You are a summarization assistant for a language-learning chat app.
-Below is an existing summary of earlier conversation, followed by new messages.
-Produce an UPDATED summary that merges the old summary with the new information.
-Preserve:
-- Language topics discussed and vocabulary/grammar introduced
-- Key facts about the user (name, interests, proficiency level)
-- Learning goals and progress
-- Any corrections or explanations given
-
-Write in 2nd person ("you asked about…", "you learned…").
-Keep it under 300 words. Do NOT include greetings or filler."""
 
 
 def _msg_to_dict(msg: Message) -> dict:
@@ -84,27 +61,26 @@ async def _generate_summary(
     messages: list[Message],
 ) -> str:
     """Call the summarization LLM to produce a (possibly incremental) summary."""
-    provider, model = llm_service.get_summarization_provider()
     conversation_text = _msgs_to_text(messages)
 
     if existing_summary:
+        prompt_name = "summarization_incremental"
         user_content = (
             f"## Existing Summary\n{existing_summary}\n\n"
             f"## New Messages\n{conversation_text}"
         )
-        system_prompt = INCREMENTAL_PROMPT
     else:
+        prompt_name = "summarization"
         user_content = conversation_text
-        system_prompt = SUMMARIZATION_PROMPT
 
+    meta, system_prompt = prompt_registry.render(prompt_name)
+    model = meta.get("model", app_llm.summarization_model())
     llm_messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_content},
     ]
 
-    summary = await llm_service.chat_completion(
-        llm_messages, provider=provider, model=model
-    )
+    summary = await app_llm.chat_completion(llm_messages, model=model)
     return summary.strip()
 
 

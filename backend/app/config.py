@@ -19,4 +19,8 @@ class Settings(BaseSettings):
 settings = Settings()
 
 # ── Non-secret configuration ──────────────────────────────────────────
+# Used by app.llm.summarization_model() as the OpenRouter fallback
 SUMMARIZATION_MODEL = "google/gemini-2.0-flash-001"
+
+# Default chat model — overridden by system.prompt / onboarding.prompt frontmatter
+CHAT_MODEL = "openrouter/anthropic/claude-sonnet-4-5"

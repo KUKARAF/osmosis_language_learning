@@ -304,6 +304,19 @@ main {
 
 .flashcard-front {
   background: var(--surface2);
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card-word {
+  font-size: 1em;
+}
+
+.card-context {
+  font-size: 0.52em;
+  color: var(--text-dim);
+  font-style: italic;
+  line-height: 1.5;
 }
 
 .flashcard-back {
@@ -623,6 +636,65 @@ hr {
 .notif-item-body {
   color: var(--text-dim);
   margin-top: 2px;
+}
+
+/* --- Grammar card back --- */
+.card-type-chip {
+  font-size: 0.6em;
+  background: var(--surface2);
+  color: var(--text-dim);
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.flashcard-back {
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 20px;
+  font-size: 1em;
+  overflow-y: auto;
+}
+
+.conjugation-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.conjugation-table td {
+  padding: 4px 8px;
+}
+
+.conjugation-table .person {
+  color: var(--text-dim);
+  text-align: right;
+  width: 45%;
+}
+
+.conjugation-table .form {
+  color: var(--text);
+  font-weight: bold;
+}
+
+.grammar-answer {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: var(--success);
+}
+
+.grammar-rule {
+  font-size: 0.75em;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.grammar-example {
+  font-size: 0.8em;
+  color: var(--text-dim);
+  border-left: 2px solid var(--accent);
+  padding-left: 8px;
 }
 
 /* --- Responsive --- */

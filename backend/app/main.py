@@ -6,15 +6,22 @@ from fastapi.staticfiles import StaticFiles
 
 from app.database import init_db
 from app import plugins
+from app.llm.prompt_loader import registry as prompt_registry
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
 
+    # Register core prompts first (lowest priority)
+    prompt_registry.register_dir(Path(__file__).parent / "prompts")
+
     # Discover and start all installed plugins
     loaded = plugins.load_plugins()
     for plugin in loaded:
+        # Register plugin prompts (higher priority than core)
+        if prompts_dir := plugin.get_prompts_dir():
+            prompt_registry.register_dir(prompts_dir)
         await plugin.on_startup(app)
         if router := plugin.get_router():
             app.include_router(

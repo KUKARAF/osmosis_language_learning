@@ -6,7 +6,7 @@ from sqlalchemy import delete, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import SRSCard, SRSReviewLog, GoalWord, _uuid, _utcnow
-from app.services import llm_service
+from app import llm as app_llm
 
 _POS_PLACEHOLDER = re.compile(r"^\[.+\]$")
 
@@ -201,11 +201,9 @@ async def generate_card_back(
         f"Give only the concise translation, nothing else.{context_part}"
     )
 
-    provider, model = llm_service.get_summarization_provider()
-    translation = await llm_service.chat_completion(
+    translation = await app_llm.chat_completion(
         messages=[{"role": "user", "content": prompt}],
-        provider=provider,
-        model=model,
+        model=app_llm.summarization_model(),
     )
 
     db_card.back = translation.strip()

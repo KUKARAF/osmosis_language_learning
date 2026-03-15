@@ -2,18 +2,15 @@ import json
 from collections.abc import AsyncIterator
 from pathlib import Path
 
-from jinja2 import Environment, FileSystemLoader
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import User, Cat, Conversation, Message, _uuid, _utcnow
-from app.services import llm_service, cat_service, summarization_service
+from app.services import cat_service, summarization_service
 from app.tools.definitions import TOOLS
 from app.tools.executor import ToolExecutor
-from app import plugins
-
-_templates_dir = Path(__file__).resolve().parent.parent / "templates"
-_jinja_env = Environment(loader=FileSystemLoader(str(_templates_dir)))
+from app import plugins, llm as app_llm
+from app.llm.prompt_loader import registry as prompt_registry
 
 MAX_TOOL_ITERATIONS = 5
 
@@ -42,20 +39,18 @@ async def get_or_create_conversation(
     return conv
 
 
-async def build_system_prompt(user: User, cat: Cat) -> str:
-    """Render the system prompt from a Jinja template."""
+async def build_system_prompt(user: User, cat: Cat) -> tuple[str, str]:
+    """Render the system prompt from the prompt registry.
+
+    Returns (model_string, rendered_prompt).
+    The model string is read from the prompt file's frontmatter so the prompt
+    file is the single source of truth for both content and model choice.
+    """
     known = json.loads(user.known_languages) if user.known_languages else []
-
-    if not user.target_language:
-        template = _jinja_env.get_template("onboarding.jinja")
-    else:
-        template = _jinja_env.get_template("system.jinja")
-
-    return template.render(
-        user=user,
-        cat=cat,
-        known_languages=known,
-    )
+    name = "onboarding" if not user.target_language else "system"
+    meta, body = prompt_registry.render(name, user=user, cat=cat, known_languages=known)
+    model = meta.get("model", "openrouter/anthropic/claude-sonnet-4-5")
+    return model, body
 
 
 async def handle_message(
@@ -86,7 +81,7 @@ async def handle_message(
 
     # Build messages array (with summarization of old turns)
     history = await summarization_service.build_context_with_summary(db, conv)
-    system_prompt = await build_system_prompt(user, cat)
+    chat_model, system_prompt = await build_system_prompt(user, cat)
     messages = [{"role": "system", "content": system_prompt}] + history
 
     executor = ToolExecutor(db, plugin_handlers=plugins.all_handlers())
@@ -100,8 +95,8 @@ async def handle_message(
         accumulated_tool_calls = []
         current_content = ""
 
-        async for chunk in llm_service.chat_completion_stream(
-            messages, tools=all_tools
+        async for chunk in app_llm.chat_completion_stream(
+            messages, model=chat_model, tools=all_tools
         ):
             if chunk.get("type") == "done":
                 break

@@ -13,8 +13,9 @@ services:
       - ./frontend:/app/frontend:z
       - ./db-data:/app/data:z
       - ../osmosis-media:/app/osmosis-media:z
+      - ../osmosis-grammar:/app/osmosis-grammar:z
     environment:
       DEV_MODE: "true"
       DATABASE_URL: "sqlite+aiosqlite:////app/data/osmosis.db"
     command: >
-      sh -c "uv sync && uv pip install --python .venv/bin/python -e /app/osmosis-media && uv run --no-sync uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app"
+      sh -c "uv sync && uv pip install --python .venv/bin/python -e /app/osmosis-media -e /app/osmosis-grammar && uv run --no-sync uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --reload-dir app"
