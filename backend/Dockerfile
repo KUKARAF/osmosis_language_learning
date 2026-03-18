@@ -16,6 +16,8 @@ CMD ["uv", "run", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "800
 
 # prod target
 FROM base AS prod
+ARG VERSION=dev
+ENV APP_VERSION=$VERSION
 COPY backend/ backend/
 COPY frontend/ frontend/
 WORKDIR /app/backend

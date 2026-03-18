@@ -1,8 +1,6 @@
 services:
   backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
+    image: ghcr.io/kukaraf/osmosis_language_learning:latest
     ports:
       - "8000:8000"
     env_file:

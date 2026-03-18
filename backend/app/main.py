@@ -31,9 +31,6 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="osmosis", version="0.1.0", lifespan=lifespan)
-
-# --- built-in routers ---
 from app.routers import (  # noqa: E402
     auth,
     billing,
@@ -44,7 +41,12 @@ from app.routers import (  # noqa: E402
     notifications,
     srs,
     users,
+    version,
 )
+
+app = FastAPI(title="osmosis", version=version._resolve_version(), lifespan=lifespan)
+
+# --- built-in routers ---
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
@@ -57,6 +59,7 @@ app.include_router(
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(billing.router, prefix="/api/billing", tags=["billing"])
 app.include_router(communes.router, prefix="/api/communes", tags=["communes"])
+app.include_router(version.router, prefix="/api/version", tags=["version"])
 
 # --- plugin routers (included at module level, not inside lifespan) ---
 for _plugin in _plugins:
