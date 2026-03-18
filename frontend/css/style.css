@@ -306,6 +306,32 @@ main {
   background: var(--surface2);
   flex-direction: column;
   gap: 12px;
+  overflow: hidden;
+}
+
+/* Dog-ear fold in bottom-right corner — hints card is flippable */
+.flashcard-front::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 28px 28px;
+  border-color: transparent transparent var(--bg) transparent;
+  animation: dogear-pulse 2s ease-in-out infinite;
+  transform-origin: bottom right;
+}
+
+@keyframes dogear-pulse {
+  0%, 100% { border-width: 0 0 28px 28px; opacity: 0.7; }
+  50%       { border-width: 0 0 38px 38px; opacity: 1; }
+}
+
+/* Hide dog-ear once flipped */
+.flashcard.flipped .flashcard-front::after {
+  display: none;
 }
 
 .card-word {

@@ -17,7 +17,7 @@ from app.llm.prompt_loader import registry as prompt_registry
 
 class SpeakRequest(BaseModel):
     text: str
-    voice: str = "Aria-PlayAI"
+    voice: str = "alloy"
 
 
 class EvaluateRequest(BaseModel):

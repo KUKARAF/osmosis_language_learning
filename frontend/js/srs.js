@@ -8,7 +8,8 @@ let _devMode = false;
 let _lastQuiz = null;       // grammar quiz data for evaluation
 let _mediaRecorder = null;  // active MediaRecorder instance
 let _audioChunks = [];
-let _currentSpeakText = ''; // text shown on the flipped back (for TTS)
+let _currentSpeakText = ''; // text for TTS
+let _currentDoFlip = null;  // doFlip fn for current card (set in renderCard)
 
 const GRAMMAR_TYPES = new Set(['conjugation', 'pattern', 'gender']);
 const RATING_LABELS = { 1: 'again', 2: 'hard', 3: 'good', 4: 'easy' };
@@ -46,7 +47,6 @@ async function startRecording(card) {
     stream.getTracks().forEach(t => t.stop());
     const blob = new Blob(_audioChunks, { type: 'audio/webm' });
     _mediaRecorder = null;
-    document.getElementById('recording-status').hidden = true;
     document.getElementById('mic-btn').textContent = '🎤';
 
     const fd = new FormData();
@@ -65,14 +65,15 @@ async function startRecording(card) {
       const data = await res.json();
       input.value = data.text;
       input.placeholder = 'type your answer...';
+      // Auto-flip after transcription
+      if (_currentDoFlip) _currentDoFlip();
     } catch {
       input.placeholder = 'transcription failed';
     }
   };
 
   _mediaRecorder.start();
-  document.getElementById('recording-status').hidden = false;
-  document.getElementById('mic-btn').textContent = '⏹';
+  document.getElementById('mic-btn').textContent = '🔴';
 
   // Auto-stop after 30s
   setTimeout(() => { if (_mediaRecorder) stopRecording(); }, 30000);
@@ -92,11 +93,10 @@ async function speakText(card, text) {
   btn.textContent = '⏳';
   btn.disabled = true;
   try {
-    const token = localStorage.getItem('token');
     const resp = await fetch(`/api/srs/cards/${card.id}/speak`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ text }),
@@ -107,10 +107,10 @@ async function speakText(card, text) {
     const audio = new Audio(url);
     audio.onended = () => URL.revokeObjectURL(url);
     await audio.play();
-  } catch {
-    // silent fail — TTS is a nice-to-have
+  } catch (err) {
+    btn.textContent = '❌';
+    setTimeout(() => { btn.textContent = '🔊'; }, 2000);
   } finally {
-    btn.textContent = '🔊';
     btn.disabled = false;
   }
 }
@@ -203,7 +203,6 @@ function setPreFlipUI() {
   document.getElementById('card-actions').hidden = true;
   document.getElementById('eval-panel').hidden = true;
   document.getElementById('answer-input').value = '';
-  document.getElementById('recording-status').hidden = true;
   document.getElementById('mic-btn').textContent = '🎤';
 
   // Reset suggested rating
@@ -284,6 +283,7 @@ function renderCard(card) {
 
   // ── Flip logic ───────────────────────────────────────────────────────────
   async function doFlip() {
+    _currentDoFlip = null; // prevent double-flip
     if (flashcard.classList.contains('flipped')) return; // already flipped
     stopRecording();
 
@@ -324,6 +324,7 @@ function renderCard(card) {
     }
   }
 
+  _currentDoFlip = doFlip;
   flashcard.onclick = doFlip;
   document.getElementById('flip-btn').onclick = doFlip;
 }
@@ -431,6 +432,11 @@ export async function initReview() {
     renderCard(null);
   }
 
+  // Enter key on answer input triggers flip
+  document.getElementById('answer-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); if (_currentDoFlip) _currentDoFlip(); }
+  });
+
   // Rating buttons (post-flip)
   document.querySelectorAll('.btn-rating[data-rating]').forEach(btn => {
     btn.onclick = () => {
@@ -438,9 +444,6 @@ export async function initReview() {
       submitRating(Number(btn.dataset.rating));
     };
   });
-
-  // Pre-flip "i know it" (easy without flipping)
-  document.getElementById('easy-preflip-btn').onclick = () => submitRating(4);
 
   // Mic button
   document.getElementById('mic-btn').onclick = () => {

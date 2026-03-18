@@ -66,10 +66,10 @@ async def chat_completion(
     )
 
 
-async def speak(text: str, voice: str = "Aria-PlayAI") -> bytes:
-    """Synthesize speech using Groq PlayAI TTS. Returns mp3 bytes."""
-    from app.llm.providers.groq import GroqProvider
-    return await GroqProvider().speak(text, voice=voice)
+async def speak(text: str, voice: str = "alloy") -> bytes:
+    """Synthesize speech via OpenAI TTS. Returns mp3 bytes."""
+    from app.llm.providers.openai import OpenAIProvider
+    return await OpenAIProvider().speak(text, voice=voice)
 
 
 async def transcribe_audio(

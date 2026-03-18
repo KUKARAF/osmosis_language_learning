@@ -46,6 +46,26 @@ class OpenRouterProvider:
             resp.raise_for_status()
             return resp.json()["choices"][0]["message"]["content"]
 
+    async def speak(
+        self,
+        text: str,
+        voice: str = "alloy",
+        model: str = "openai/tts-1",
+    ) -> bytes:
+        """Synthesize speech via OpenRouter /audio/speech. Returns mp3 bytes."""
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                f"{_BASE_URL}/audio/speech",
+                headers={
+                    "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+                    "HTTP-Referer": "https://app.osmosis.page",
+                    "X-Title": "osmosis",
+                },
+                json={"model": model, "input": text, "voice": voice},
+            )
+            resp.raise_for_status()
+            return resp.content
+
     async def chat_completion_stream(
         self,
         messages: list[dict],
