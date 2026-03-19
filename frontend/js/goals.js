@@ -1,4 +1,4 @@
-import { apiGet, apiPost, apiDelete } from './api.js';
+import { apiGet, apiPost, apiDelete, apiFetch } from './api.js';
 
 function esc(s) {
   const d = document.createElement('div');
@@ -68,6 +68,36 @@ async function handleAction(btn) {
   const goalId = btn.dataset.goalId;
   const action = btn.dataset.action;
   const mediaType = btn.dataset.mediaType;
+
+  if (action === 'upload_subtitles') {
+    let input = card.querySelector('.srt-file-input');
+    if (input) { input.click(); return; }
+    input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.srt,.ass,.ssa,.sub,.vtt,.txt';
+    input.className = 'srt-file-input';
+    input.hidden = true;
+    card.appendChild(input);
+    input.addEventListener('change', async () => {
+      if (!input.files.length) return;
+      btn.disabled = true;
+      btn.textContent = 'uploading...';
+      const form = new FormData();
+      form.append('file', input.files[0]);
+      try {
+        const res = await apiFetch(`/goals/${goalId}/upload-srt`, { method: 'POST', body: form });
+        showResult(resultEl, res);
+      } catch (e) {
+        showResult(resultEl, null, e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Upload SRT';
+        input.value = '';
+      }
+    });
+    input.click();
+    return;
+  }
 
   if (action !== 'import_subtitles') return;
 

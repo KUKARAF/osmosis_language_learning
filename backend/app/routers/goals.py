@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile, File
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -139,6 +139,28 @@ async def auto_import(
             season=body.season if body else None,
             episode=body.episode if body else None,
         )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return SubtitleImportResponse(**result)
+
+
+@router.post("/{goal_id}/upload-srt")
+async def upload_srt(
+    goal_id: str,
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> SubtitleImportResponse:
+    goal = await goal_service.get_goal(db, goal_id)
+    if goal is None or goal.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    try:
+        srt_content = (await file.read()).decode("utf-8")
+        result = await goal_import_service.import_from_srt(
+            db, goal, srt_content=srt_content, source_url=file.filename,
+        )
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=422, detail="File is not valid UTF-8 text")
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return SubtitleImportResponse(**result)

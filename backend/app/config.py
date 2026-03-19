@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str = ""
     GROQ_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
+    LEMONFOX_API_KEY: str = ""
     SUBDL_API_KEY: str = ""
     OIDC_ISSUER: str = "https://auth.osmosis.page/application/o/osmosis/"
     OIDC_CLIENT_ID: str = "osmosis"
