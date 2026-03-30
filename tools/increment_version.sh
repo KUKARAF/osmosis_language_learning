@@ -26,7 +26,4 @@ case "${1:-}" in
 esac
 
 short_sha=$(git -C "$SCRIPT_DIR/.." rev-parse --short HEAD 2>/dev/null || echo "unknown")
-version_string="$major.$minor.$short_sha"
-echo "$version_string"
-
-git -C "$SCRIPT_DIR/.." tag "v$major.$minor" 2>/dev/null || git -C "$SCRIPT_DIR/.." tag -f "v$major.$minor"
+echo "$major.$minor.$short_sha"
