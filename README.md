@@ -24,7 +24,7 @@ docker compose up
 ## Running tests
 
 ```bash
-./.tools/test.sh
+./tools/test.sh
 ```
 
 ## How to contribute
@@ -47,7 +47,7 @@ docker compose up
 3. Make your changes, then run the tests manually if you like:
 
    ```bash
-   ./.tools/test.sh
+   ./tools/test.sh
    ```
 
 4. Commit and push. The pre-commit hook will run `pytest` — if tests fail the commit is blocked.
