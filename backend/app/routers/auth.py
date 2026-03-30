@@ -3,7 +3,7 @@ import base64
 import secrets
 
 from fastapi import APIRouter, Depends, Response, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_authorize_url, exchange_code, get_userinfo, create_session_token, generate_state
@@ -62,8 +62,23 @@ async def callback(
     
     # For mobile deep links, pass token as query parameter
     # For web, use cookie-based session
-    if redirect_uri and redirect_uri.startswith(("osmosis://", "http://", "https://")):
-        # Mobile app or external redirect - pass token in URL
+    if redirect_uri and redirect_uri.startswith("osmosis://"):
+        # Mobile deep link — Chrome won't follow a 302 to a custom scheme,
+        # so return an HTML page that does the navigation via JS instead.
+        deep_link = f"{redirect_target}?token={session_token}"
+        html = f"""<!DOCTYPE html>
+<html>
+<head><title>Signing in…</title>
+<meta http-equiv="refresh" content="0;url={deep_link}">
+</head>
+<body>
+<script>window.location.replace("{deep_link}");</script>
+<p>Redirecting back to the app…
+<a href="{deep_link}">Tap here</a> if nothing happens.</p>
+</body>
+</html>"""
+        return HTMLResponse(html)
+    elif redirect_uri and redirect_uri.startswith(("http://", "https://")):
         resp = RedirectResponse(f"{redirect_target}?token={session_token}")
     else:
         # Web app - use cookie-based session
