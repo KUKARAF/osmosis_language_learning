@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: pytest
         name: pytest
-        entry: bash -c 'cd backend && uv run --extra dev pytest tests/ -v'
+        entry: bash -c './tools/test.sh -v'
         language: system
         pass_filenames: false
         always_run: true
