@@ -17,11 +17,12 @@ from app.services.auth_service import get_or_create_user
 router = APIRouter()
 
 # In-memory PKCE store (fine for single-instance MVP)
-_pkce_store: dict[str, str] = {}
+# Maps state → (code_verifier, redirect_uri)
+_pkce_store: dict[str, tuple[str, str | None]] = {}
 
 
 @router.get("/login")
-async def login():
+async def login(redirect_uri: str | None = None):
     """Redirect to OIDC provider."""
     if settings.DEV_MODE:
         return RedirectResponse("/")
@@ -32,7 +33,7 @@ async def login():
         hashlib.sha256(code_verifier.encode()).digest()
     ).rstrip(b"=").decode()
 
-    _pkce_store[state] = code_verifier
+    _pkce_store[state] = (code_verifier, redirect_uri)
     url = await get_authorize_url(state, code_challenge)
     return RedirectResponse(url)
 
@@ -45,23 +46,35 @@ async def callback(
     db: AsyncSession = Depends(get_db),
 ):
     """OIDC callback — exchange code, create session."""
-    code_verifier = _pkce_store.pop(state, None)
-    if code_verifier is None:
+    state_data = _pkce_store.pop(state, None)
+    if state_data is None:
         return Response(status_code=400, content="Invalid state")
 
+    code_verifier, redirect_uri = state_data
     tokens = await exchange_code(code, code_verifier)
     userinfo = await get_userinfo(tokens["access_token"])
     user = await get_or_create_user(db, userinfo)
 
     session_token = create_session_token(user.id)
-    resp = RedirectResponse("/")
-    resp.set_cookie(
-        "session_token",
-        session_token,
-        httponly=True,
-        samesite="lax",
-        max_age=86400,
-    )
+    
+    # Determine redirect target
+    redirect_target = redirect_uri if redirect_uri else "/"
+    
+    # For mobile deep links, pass token as query parameter
+    # For web, use cookie-based session
+    if redirect_uri and redirect_uri.startswith(("osmosis://", "http://", "https://")):
+        # Mobile app or external redirect - pass token in URL
+        resp = RedirectResponse(f"{redirect_target}?token={session_token}")
+    else:
+        # Web app - use cookie-based session
+        resp = RedirectResponse(redirect_target)
+        resp.set_cookie(
+            "session_token",
+            session_token,
+            httponly=True,
+            samesite="lax",
+            max_age=86400,
+        )
     return resp
 
 
