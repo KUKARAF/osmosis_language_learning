@@ -60,7 +60,11 @@ app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(billing.router, prefix="/api/billing", tags=["billing"])
 app.include_router(communes.router, prefix="/api/communes", tags=["communes"])
 app.include_router(version.router, prefix="/api/version", tags=["version"])
-app.include_router(version.router, prefix="/version", tags=["version"])
+
+
+@app.get("/version", tags=["version"])
+async def version_endpoint():
+    return {"version": version._resolve_version()}
 
 # --- plugin routers (included at module level, not inside lifespan) ---
 for _plugin in _plugins:
