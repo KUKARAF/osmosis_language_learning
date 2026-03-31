@@ -2,10 +2,10 @@ import re
 from datetime import datetime, timezone
 
 from fsrs import Scheduler, Card, Rating, State
-from sqlalchemy import delete, select, func
+from sqlalchemy import delete, select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import SRSCard, SRSReviewLog, GoalWord, _uuid, _utcnow
+from app.models import Goal, SRSCard, SRSReviewLog, GoalWord, _uuid, _utcnow
 from app import llm as app_llm
 
 _POS_PLACEHOLDER = re.compile(r"^\[.+\]$")
@@ -80,6 +80,24 @@ async def review_card(
     db.add(log)
     await db.commit()
     await db.refresh(db_card)
+
+    # Update known_words for any goals that contain this card
+    goal_ids_result = await db.execute(
+        select(GoalWord.goal_id).where(GoalWord.card_id == card_id)
+    )
+    goal_ids = [row.goal_id for row in goal_ids_result]
+    for goal_id in goal_ids:
+        known_count = (await db.execute(
+            select(func.count(GoalWord.card_id))
+            .join(SRSCard, SRSCard.id == GoalWord.card_id)
+            .where(GoalWord.goal_id == goal_id, SRSCard.fsrs_state == 2)
+        )).scalar() or 0
+        await db.execute(
+            update(Goal).where(Goal.id == goal_id).values(known_words=known_count)
+        )
+    if goal_ids:
+        await db.commit()
+
     return db_card
 
 
