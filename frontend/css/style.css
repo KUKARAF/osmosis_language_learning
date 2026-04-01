@@ -229,6 +229,22 @@ main {
   animation: blink 0.8s infinite;
 }
 
+/* --- SRS word rainbow breathing effect --- */
+@keyframes rainbow-breathe {
+  0%   { color: #ff6b6b; text-shadow: 0 0 5px rgba(255, 107, 107, 0.5); }
+  16%  { color: #ffa94d; text-shadow: 0 0 5px rgba(255, 169,  77, 0.5); }
+  33%  { color: #ffe066; text-shadow: 0 0 5px rgba(255, 224, 102, 0.5); }
+  50%  { color: #69db7c; text-shadow: 0 0 5px rgba(105, 219, 124, 0.5); }
+  66%  { color: #4dabf7; text-shadow: 0 0 5px rgba( 77, 171, 247, 0.5); }
+  83%  { color: #da77f2; text-shadow: 0 0 5px rgba(218, 119, 242, 0.5); }
+  100% { color: #ff6b6b; text-shadow: 0 0 5px rgba(255, 107, 107, 0.5); }
+}
+
+.srs-word {
+  animation: rainbow-breathe 3s ease-in-out infinite;
+  font-weight: 600;
+}
+
 @keyframes blink {
   50% { opacity: 0; }
 }

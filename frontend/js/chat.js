@@ -4,6 +4,49 @@ import { initCat } from './cat.js';
 let conversationId = null;
 let devMode = false;
 let abortController = null;
+let srsWordsSet = new Set(); // lowercase word fronts from SRS
+
+async function loadSrsWords() {
+  try {
+    const words = await apiGet('/srs/words');
+    srsWordsSet = new Set(words.map(w => w.front.toLowerCase()));
+  } catch {
+    // non-critical — highlighting degrades gracefully
+  }
+}
+
+function highlightSrsWords(el) {
+  if (!srsWordsSet.size) return;
+  const text = el.textContent;
+  const wordPattern = /[\p{L}\p{N}]+/gu;
+  const fragment = document.createDocumentFragment();
+  let lastIndex = 0;
+  let match;
+  let hasHighlight = false;
+  while ((match = wordPattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+    }
+    const word = match[0];
+    if (srsWordsSet.has(word.toLowerCase())) {
+      const span = document.createElement('span');
+      span.className = 'srs-word';
+      span.textContent = word;
+      fragment.appendChild(span);
+      hasHighlight = true;
+    } else {
+      fragment.appendChild(document.createTextNode(word));
+    }
+    lastIndex = match.index + word.length;
+  }
+  if (lastIndex < text.length) {
+    fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+  }
+  if (hasHighlight) {
+    el.textContent = '';
+    el.appendChild(fragment);
+  }
+}
 
 export function teardownChat() {
   if (abortController) {
@@ -27,7 +70,8 @@ function renderHistory(messages) {
   container.innerHTML = '';
   for (const msg of messages) {
     if (msg.role === 'system') continue;
-    appendMessage(msg.role, msg.content || '');
+    const el = appendMessage(msg.role, msg.content || '');
+    highlightSrsWords(el);
   }
 }
 
@@ -73,7 +117,8 @@ function parseSSE(chunk) {
 async function sendMessage(text) {
   if (!text.trim()) return;
 
-  appendMessage('user', text);
+  const userEl = appendMessage('user', text);
+  highlightSrsWords(userEl);
   document.getElementById('chat-input').value = '';
 
   const id = await ensureConversation();
@@ -122,6 +167,7 @@ async function sendMessage(text) {
           case 'tool_result':
             break;
           case 'done':
+            loadSrsWords().then(() => highlightSrsWords(assistantEl));
             break;
           case 'error':
             assistantEl.textContent += `\n[error: ${data.detail || data.content || 'unknown'}]`;
@@ -151,6 +197,7 @@ async function sendMessage(text) {
 
 export async function initChat() {
   await initCat();
+  await loadSrsWords();
 
   const id = await ensureConversation();
   try {

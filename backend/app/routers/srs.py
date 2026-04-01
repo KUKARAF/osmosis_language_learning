@@ -203,6 +203,16 @@ async def delete_card(
     return Response(status_code=204)
 
 
+@router.get("/words")
+async def get_word_states(
+    language: str | None = Query(None),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    """Return all card fronts with their SRS state (lightweight, for word highlighting)."""
+    return await srs_service.get_all_card_fronts(db, user.id, language=language)
+
+
 @router.get("/stats")
 async def get_stats(
     language: str | None = Query(None),

@@ -230,6 +230,16 @@ async def generate_card_back(
     return db_card
 
 
+async def get_all_card_fronts(
+    db: AsyncSession, user_id: str, language: str | None = None
+) -> list[dict]:
+    q = select(SRSCard.front, SRSCard.fsrs_state).where(SRSCard.user_id == user_id)
+    if language:
+        q = q.where(SRSCard.language == language)
+    result = await db.execute(q)
+    return [{"front": row.front, "fsrs_state": row.fsrs_state} for row in result]
+
+
 async def get_stats(
     db: AsyncSession, user_id: str, language: str | None = None
 ) -> dict:
