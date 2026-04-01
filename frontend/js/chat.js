@@ -162,7 +162,10 @@ async function sendMessage(text) {
               document.getElementById('chat-messages').scrollHeight;
             break;
           case 'tool_call':
-            appendMessage('tool', `⚙ ${data.name || 'tool call'}`);
+            if (data.name === 'rate_word' && data.arguments?.rating < 4) {
+              const word = data.arguments.word || '';
+              appendMessage('correction', `btw, that's not how you write/use "${word}"`);
+            }
             break;
           case 'tool_result':
             break;
