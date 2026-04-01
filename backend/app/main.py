@@ -38,6 +38,7 @@ from app.routers import (  # noqa: E402
     chat,
     communes,
     goals,
+    instant_assistant,
     notifications,
     srs,
     users,
@@ -60,6 +61,7 @@ app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(billing.router, prefix="/api/billing", tags=["billing"])
 app.include_router(communes.router, prefix="/api/communes", tags=["communes"])
 app.include_router(version.router, prefix="/api/version", tags=["version"])
+app.include_router(instant_assistant.router, prefix="/api/instant-assistant", tags=["instant-assistant"])
 
 
 @app.get("/version", tags=["version"])

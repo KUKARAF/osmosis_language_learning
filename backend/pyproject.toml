@@ -18,6 +18,7 @@ dependencies = [
     "python-jose[cryptography]>=3.3",
     "authlib>=1.4",
     "osmosis-media @ git+https://github.com/KUKARAF/osmosis-plugin-SRT.git",
+    "osmosis-ebook @ git+https://github.com/KUKARAF/osmosis-plugin-ebook.git",
 ]
 
 [build-system]

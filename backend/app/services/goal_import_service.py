@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from osmosis_media import fetch_and_process, process_srt
 from osmosis_media.providers.subdl import SubDLProvider
+from osmosis_ebook import process_ebook
 
 from app.models import Goal, GoalWord, SRSCard, _uuid, _utcnow
 
@@ -39,6 +40,23 @@ async def import_from_srt(
         source_url=source_url,
     )
     return await _persist(db, goal, media_goal, srt_content)
+
+
+async def import_from_ebook(
+    db: AsyncSession,
+    goal: Goal,
+    file_data: bytes,
+    filename: str,
+) -> dict:
+    """Process an ebook file and import vocabulary into the goal."""
+    media_goal = await process_ebook(
+        data=file_data,
+        filename=filename,
+        language=goal.language,
+        title=goal.title,
+        media_type=goal.media_type or "book",
+    )
+    return await _persist(db, goal, media_goal, None)
 
 
 async def auto_import(

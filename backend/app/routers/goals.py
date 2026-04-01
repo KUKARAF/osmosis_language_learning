@@ -166,6 +166,26 @@ async def upload_srt(
     return SubtitleImportResponse(**result)
 
 
+@router.post("/{goal_id}/upload-ebook")
+async def upload_ebook(
+    goal_id: str,
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> SubtitleImportResponse:
+    goal = await goal_service.get_goal(db, goal_id)
+    if goal is None or goal.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Goal not found")
+    try:
+        file_data = await file.read()
+        result = await goal_import_service.import_from_ebook(
+            db, goal, file_data=file_data, filename=file.filename or "unknown.txt",
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return SubtitleImportResponse(**result)
+
+
 def _goal_response(g) -> GoalResponse:
     actions = plugins.goal_actions_for(g.media_type or "")
     return GoalResponse(

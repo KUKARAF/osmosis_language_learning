@@ -1,6 +1,6 @@
-"""Tests for goal_import_service: _clean_title and import_from_srt."""
+"""Tests for goal_import_service: _clean_title, import_from_srt, import_from_ebook."""
 import pytest
-from app.services.goal_import_service import _clean_title, import_from_srt
+from app.services.goal_import_service import _clean_title, import_from_srt, import_from_ebook
 
 SRT_ES = """\
 1
@@ -69,3 +69,30 @@ async def test_import_from_srt_empty_raises(db, user, goal):
     import pysubs2
     with pytest.raises((ValueError, pysubs2.exceptions.FormatAutodetectionError)):
         await import_from_srt(db, goal, srt_content="")
+
+
+# --- import_from_ebook ---
+
+TXT_ES = (
+    "El detective encontró las pistas en el lugar.\n"
+    "Ella corrió hacia la salida rápidamente.\n"
+    "Los sospechosos huyeron del edificio oscuro.\n"
+)
+
+
+@pytest.mark.asyncio
+async def test_import_from_ebook_creates_cards(db, user, goal):
+    result = await import_from_ebook(db, goal, file_data=TXT_ES.encode(), filename="book.txt")
+    assert result["new_cards"] > 0
+
+
+@pytest.mark.asyncio
+async def test_import_from_ebook_returns_word_count(db, user, goal):
+    result = await import_from_ebook(db, goal, file_data=TXT_ES.encode(), filename="book.txt")
+    assert result["total_words"] > 0
+
+
+@pytest.mark.asyncio
+async def test_import_from_ebook_unsupported_format_raises(db, user, goal):
+    with pytest.raises(ValueError, match="Unsupported"):
+        await import_from_ebook(db, goal, file_data=b"data", filename="book.docx")
