@@ -71,7 +71,7 @@ function renderHistory(messages) {
   for (const msg of messages) {
     if (msg.role === 'system') continue;
     const el = appendMessage(msg.role, msg.content || '');
-    highlightSrsWords(el);
+    if (msg.role === 'user') highlightSrsWords(el);
   }
 }
 
@@ -167,7 +167,7 @@ async function sendMessage(text) {
           case 'tool_result':
             break;
           case 'done':
-            loadSrsWords().then(() => highlightSrsWords(assistantEl));
+            loadSrsWords();
             break;
           case 'error':
             assistantEl.textContent += `\n[error: ${data.detail || data.content || 'unknown'}]`;
