@@ -55,6 +55,7 @@ async def chat_completion(
     *,
     temperature: float = 0.7,
     response_format: dict | None = None,
+    timeout: float = 30.0,
 ) -> str:
     """Non-streaming chat completion. Returns the response text."""
     provider_name, model_id = _parse(model)
@@ -63,6 +64,7 @@ async def chat_completion(
         model=model_id,
         temperature=temperature,
         response_format=response_format,
+        timeout=timeout,
     )
 
 

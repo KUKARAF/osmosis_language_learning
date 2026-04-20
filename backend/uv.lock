@@ -935,7 +935,7 @@ dependencies = [
 [[package]]
 name = "osmosis-homework"
 version = "0.1.0"
-source = { git = "https://github.com/KUKARAF/osmosis-plugin-homework.git#da5ac5a5458c7bd993713dbcdfb6c3afb169f791" }
+source = { git = "https://github.com/KUKARAF/osmosis-plugin-homework.git#2d58b8fc7779105e174a21e768161809b7838593" }
 
 [[package]]
 name = "osmosis-media"

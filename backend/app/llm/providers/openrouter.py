@@ -27,6 +27,7 @@ class OpenRouterProvider:
         *,
         temperature: float = 0.7,
         response_format: dict | None = None,
+        timeout: float = 30.0,
     ) -> str:
         body: dict = {
             "model": model,
@@ -37,7 +38,7 @@ class OpenRouterProvider:
         if response_format:
             body["response_format"] = response_format
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(
                 f"{_BASE_URL}/chat/completions",
                 headers=self._headers(),
