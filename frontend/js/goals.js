@@ -164,6 +164,7 @@ function showResult(el, res, error) {
 
 async function loadMediaTypes() {
   const select = document.getElementById('add-goal-type');
+  select.innerHTML = '';
   try {
     const types = await apiGet('/goals/media-types');
     for (const t of types) {
