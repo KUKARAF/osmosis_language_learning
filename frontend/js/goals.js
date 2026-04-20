@@ -99,6 +99,48 @@ async function handleAction(btn) {
     return;
   }
 
+  if (action === 'upload_homework_photo') {
+    const card = btn.closest('.goal-card');
+    const resultEl = card.querySelector('.goal-import-result');
+    const goalLanguage = card.querySelector('.goal-meta')?.textContent?.split('·')[0]?.trim() || '';
+    const goalTitle = card.querySelector('.goal-title')?.textContent?.trim() || '';
+
+    let input = card.querySelector('.homework-photo-input');
+    if (!input) {
+      input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.capture = 'environment';
+      input.className = 'homework-photo-input';
+      input.hidden = true;
+      card.appendChild(input);
+
+      input.addEventListener('change', async () => {
+        if (!input.files.length) return;
+        btn.disabled = true;
+        btn.textContent = 'analyzing...';
+        resultEl.hidden = true;
+        try {
+          const form = new FormData();
+          form.append('subject', goalTitle);
+          form.append('language', goalLanguage);
+          form.append('goal_id', goalId);
+          form.append('photo', input.files[0]);
+          const res = await apiFetch('/plugins/homework/analyze', { method: 'POST', body: form });
+          showResult(resultEl, { new_cards: res.vocab_count + res.grammar_count });
+        } catch (e) {
+          showResult(resultEl, null, e.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Upload Photo';
+          input.value = '';
+        }
+      });
+    }
+    input.click();
+    return;
+  }
+
   if (action !== 'import_subtitles') return;
 
   const card = btn.closest('.goal-card');
