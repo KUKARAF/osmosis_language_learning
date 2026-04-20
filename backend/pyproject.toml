@@ -19,6 +19,7 @@ dependencies = [
     "authlib>=1.4",
     "osmosis-media @ git+https://github.com/KUKARAF/osmosis-plugin-SRT.git",
     "osmosis-ebook @ git+https://github.com/KUKARAF/osmosis-plugin-ebook.git",
+    "osmosis-homework @ git+https://github.com/KUKARAF/osmosis-plugin-homework.git",
 ]
 
 [build-system]

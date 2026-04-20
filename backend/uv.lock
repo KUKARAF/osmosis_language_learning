@@ -879,6 +879,7 @@ dependencies = [
     { name = "httpx" },
     { name = "jinja2" },
     { name = "osmosis-ebook" },
+    { name = "osmosis-homework" },
     { name = "osmosis-media" },
     { name = "pydantic-settings" },
     { name = "python-jose", extra = ["cryptography"] },
@@ -906,6 +907,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "osmosis-ebook", git = "https://github.com/KUKARAF/osmosis-plugin-ebook.git" },
+    { name = "osmosis-homework", git = "https://github.com/KUKARAF/osmosis-plugin-homework.git" },
     { name = "osmosis-media", git = "https://github.com/KUKARAF/osmosis-plugin-SRT.git" },
     { name = "pydantic-settings", specifier = ">=2.7" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8" },
@@ -931,9 +933,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "osmosis-homework"
+version = "0.1.0"
+source = { git = "https://github.com/KUKARAF/osmosis-plugin-homework.git#041143abd724e224c0bdaace9599f61ecd90c016" }
+
+[[package]]
 name = "osmosis-media"
 version = "0.1.0"
-source = { git = "https://github.com/KUKARAF/osmosis-plugin-SRT.git#e19df20d2cf5acee5ee150f5d15be726e9fb9205" }
+source = { git = "https://github.com/KUKARAF/osmosis-plugin-SRT.git#4d71e15fd504570369c9676cb67f47909139ad7f" }
 dependencies = [
     { name = "click" },
     { name = "httpx" },

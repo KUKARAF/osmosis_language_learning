@@ -98,6 +98,29 @@ async def review_card(
     if goal_ids:
         await db.commit()
 
+        # Notify when a goal is fully mastered
+        for goal_id in goal_ids:
+            goal_result = await db.execute(select(Goal).where(Goal.id == goal_id))
+            goal = goal_result.scalar_one_or_none()
+            if (
+                goal
+                and goal.total_words
+                and goal.total_words > 0
+                and goal.known_words >= goal.total_words
+                and goal.status == "active"
+            ):
+                goal.status = "completed"
+                goal.completed_at = _utcnow()
+                from app.services import notification_service
+                await notification_service.create(
+                    db,
+                    goal.user_id,
+                    type="goal_complete",
+                    title="Goal mastered!",
+                    body=f"You've learned all the material from '{goal.title}'. You're ready!",
+                )
+        await db.commit()
+
     return db_card
 
 
